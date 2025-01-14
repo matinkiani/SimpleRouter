@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use InvalidArgumentException;
 use MatinKiani\SimpleRouter\Router;
 use PHPUnit\Framework\TestCase;
 
@@ -118,5 +119,92 @@ class RouterTest extends TestCase
         $response = $router->dispatch('GET', '/test/123/john');
 
         $this->assertEquals('Test Route 123 john', $response);
+    }
+
+    public function test_add_wrong_route_method(): void
+    {
+        $router = new Router;
+        $this->expectException(InvalidArgumentException::class);
+        $router->add('WrOnG', '/test', fn (): string => 'Test POST Route');
+    }
+
+    public function test_add_and_dispatch_route_with_empty_path(): void
+    {
+        $router = new Router;
+        $router->add('GET', '', fn (): string => 'Test Empty Path Route');
+
+        $response = $router->dispatch('GET', '');
+
+        $this->assertEquals('Test Empty Path Route', $response);
+    }
+
+    public function test_add_and_dispatch_route_with_numeric_path(): void
+    {
+        $router = new Router;
+        $router->add('GET', '/123', fn (): string => 'Test Numeric Path Route');
+
+        $response = $router->dispatch('GET', '/123');
+
+        $this->assertEquals('Test Numeric Path Route', $response);
+    }
+
+    public function test_add_and_dispatch_route_with_mixed_case_path(): void
+    {
+        $router = new Router;
+        $router->add('GET', '/TestPath', fn (): string => 'Test Mixed Case Path Route');
+
+        $response = $router->dispatch('GET', '/TestPath');
+
+        $this->assertEquals('Test Mixed Case Path Route', $response);
+    }
+
+    public function test_get_method(): void
+    {
+        $router = new Router;
+        $router->get('/test', fn (): string => 'Test GET Route');
+
+        $response = $router->dispatch('GET', '/test');
+
+        $this->assertEquals('Test GET Route', $response);
+    }
+
+    public function test_post_method(): void
+    {
+        $router = new Router;
+        $router->post('/test', fn (): string => 'Test POST Route');
+
+        $response = $router->dispatch('POST', '/test');
+
+        $this->assertEquals('Test POST Route', $response);
+    }
+
+    public function test_put_method(): void
+    {
+        $router = new Router;
+        $router->put('/test', fn (): string => 'Test PUT Route');
+
+        $response = $router->dispatch('PUT', '/test');
+
+        $this->assertEquals('Test PUT Route', $response);
+    }
+
+    public function test_patch_method(): void
+    {
+        $router = new Router;
+        $router->patch('/test', fn (): string => 'Test PATCH Route');
+
+        $response = $router->dispatch('PATCH', '/test');
+
+        $this->assertEquals('Test PATCH Route', $response);
+    }
+
+    public function test_delete_method(): void
+    {
+        $router = new Router;
+        $router->delete('/test', fn (): string => 'Test DELETE Route');
+
+        $response = $router->dispatch('DELETE', '/test');
+
+        $this->assertEquals('Test DELETE Route', $response);
     }
 }

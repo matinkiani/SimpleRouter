@@ -11,10 +11,40 @@ class Router
 
     public function add(string $method, string $path, callable $callback): void
     {
+        $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+        $method = strtoupper($method);
+        if (! in_array($method, $allowedMethods)) {
+            throw new \InvalidArgumentException('Invalid method');
+        }
         $path = rtrim($path, '/');
         // Convert path placeholders to regex
         $pattern = preg_replace('/\{(\w+)}/', '(?P<\1>[^/]+)', $path);
         $this->routes[$method][$pattern] = $callback;
+    }
+
+    public function get(string $path, callable $callback): void
+    {
+        $this->add('GET', $path, $callback);
+    }
+
+    public function post(string $path, callable $callback): void
+    {
+        $this->add('POST', $path, $callback);
+    }
+
+    public function put(string $path, callable $callback): void
+    {
+        $this->add('PUT', $path, $callback);
+    }
+
+    public function patch(string $path, callable $callback): void
+    {
+        $this->add('PATCH', $path, $callback);
+    }
+
+    public function delete(string $path, callable $callback): void
+    {
+        $this->add('DELETE', $path, $callback);
     }
 
     public function dispatch(string $method, string $path): string
