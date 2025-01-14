@@ -1,26 +1,27 @@
 <?php
 
+declare(strict_types=1);
 
-use NunoMaduro\SkeletonPhp\Router;
+namespace Tests;
+
+use MatinKiani\SimpleRouter\Router;
 use PHPUnit\Framework\TestCase;
 
 class RouterTest extends TestCase
 {
-    public function test_register_and_dispatch_route()
+    public function test_add_and_dispatch_route(): void
     {
-        $router = new Router();
-        $router->add('GET', '/test', function () {
-            return 'Test Route';
-        });
+        $router = new Router;
+        $router->add('GET', '/test', fn (): string => 'Test Route');
 
         $response = $router->dispatch('GET', '/test');
 
         $this->assertEquals('Test Route', $response);
     }
 
-    public function test_404_for_unmatched_route()
+    public function test_404_for_unmatched_route(): void
     {
-        $router = new Router();
+        $router = new Router;
         $response = $router->dispatch('GET', '/non-existent');
         $this->assertEquals('404 Not Found', $response);
     }

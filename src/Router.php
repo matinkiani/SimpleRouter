@@ -1,9 +1,7 @@
 <?php
+
 declare(strict_types=1);
 
-namespace NunoMaduro\SkeletonPhp;
+namespace MatinKiani\SimpleRouter;
 
-class Router
-{
-
-}
+class Router {}

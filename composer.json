@@ -1,19 +1,19 @@
 {
-    "name": "nunomaduro/skeleton-php",
-    "description": "A skeleton repository for my packages",
-    "keywords": ["php", "skeleton", "package"],
+    "name": "matinkiani/simple-router",
+    "description": "A Simple PHP router",
+    "keywords": ["php", "router", "package"],
     "license": "MIT",
     "authors": [
         {
-            "name": "Nuno Maduro",
-            "email": "enunomaduro@gmail.com"
+            "name": "Matin Kiani",
+            "email": "matinkianigame@gmail.com"
         }
     ],
     "require": {
         "php": "^8.3.0"
     },
     "require-dev": {
-        "laravel/pint\": \"^1.18.1",
+        "laravel/pint": "^1.18.1",
         "pestphp/pest": "^3.5.1",
         "pestphp/pest-plugin-type-coverage": "^3.1",
         "phpstan/phpstan": "^1.12.7",
@@ -22,7 +22,7 @@
     },
     "autoload": {
         "psr-4": {
-            "NunoMaduro\\SkeletonPhp\\": "src/"
+            "MatinKiani\\SimpleRouter\\": "src/"
         }
     },
     "autoload-dev": {
@@ -47,7 +47,7 @@
         "test:types": "phpstan analyse --ansi",
         "test:unit": "pest --colors=always --coverage --parallel --min=100",
         "test": [
-            "@test:refacto",
+            "@test:refcacto",
             "@test:lint",
             "@test:types",
             "@test:unit"
