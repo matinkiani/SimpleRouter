@@ -25,4 +25,13 @@ class RouterTest extends TestCase
         $response = $router->dispatch('GET', '/non-existent');
         $this->assertEquals('404 Not Found', $response);
     }
+
+    public function test_404_for_unmatched_method(): void
+    {
+        $router = new Router;
+        $router->add('GET', '/test', fn (): string => 'Test Route');
+        $response = $router->dispatch('POST', '/test');
+        $this->assertStringNotContainsString('Test Route', $response);
+        $this->assertEquals('404 Not Found', $response);
+    }
 }
