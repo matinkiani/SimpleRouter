@@ -6,67 +6,88 @@ namespace MatinKiani\SimpleRouter;
 
 class Router
 {
-    /** @var array<array<callable>> */
+    /**
+     * @var array<string, array<string|int, array{callback: callable, pattern: string}>> $routes
+     */
     private array $routes = [];
 
-    public function add(string $method, string $path, callable $callback): void
+    public function add(string $method, string $path, callable $callback): self
     {
         $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
         $method = strtoupper($method);
-        if (! in_array($method, $allowedMethods)) {
+        if (!in_array($method, $allowedMethods)) {
             throw new \InvalidArgumentException('Invalid method');
         }
         $path = rtrim($path, '/');
-        // Convert path placeholders to regex
         $pattern = preg_replace('/\{(\w+)}/', '(?P<\1>[^/]+)', $path);
-        $this->routes[$method][$pattern] = $callback;
+
+        if (isset($this->routes[$method])) {
+            foreach ($this->routes[$method] as $route) {
+                if ($route['pattern'] === $pattern) {
+                    throw new \InvalidArgumentException('Pattern already exists');
+                }
+            }
+        }
+        if (!$pattern) {
+            $pattern = '/';
+        }
+
+        $this->routes[$method][] = ['callback' => $callback, 'pattern' => $pattern];
+        return $this;
     }
 
-    public function get(string $path, callable $callback): void
+    public function get(string $path, callable $callback): self
     {
-        $this->add('GET', $path, $callback);
+        return $this->add('GET', $path, $callback);
     }
 
-    public function post(string $path, callable $callback): void
+    public function post(string $path, callable $callback): self
     {
-        $this->add('POST', $path, $callback);
+        return $this->add('POST', $path, $callback);
     }
 
-    public function put(string $path, callable $callback): void
+    public function put(string $path, callable $callback): self
     {
-        $this->add('PUT', $path, $callback);
+        return $this->add('PUT', $path, $callback);
     }
 
-    public function patch(string $path, callable $callback): void
+    public function patch(string $path, callable $callback): self
     {
-        $this->add('PATCH', $path, $callback);
+        return $this->add('PATCH', $path, $callback);
     }
 
-    public function delete(string $path, callable $callback): void
+    public function delete(string $path, callable $callback): self
     {
-        $this->add('DELETE', $path, $callback);
+        return $this->add('DELETE', $path, $callback);
     }
+
 
     public function dispatch(string $method, string $path): string
     {
-        if (! isset($this->routes[$method])) {
-            return '404 Not Found';
+        if (!isset($this->routes[$method])) {
+            return $this->showNotFound();
         }
 
-        // Strip query parameters before matching
         $pathWithoutQuery = parse_url($path, PHP_URL_PATH);
         $pathWithoutQuery = rtrim($pathWithoutQuery ?: $path, '/');
+        if ($pathWithoutQuery == '') {
+            $pathWithoutQuery = '/';
+        }
 
-        foreach ($this->routes[$method] as $pattern => $callback) {
-            // Match path with regex
-            if (preg_match('#^'.$pattern.'$#', $pathWithoutQuery, $matches)) {
-                // Extract named parameters
+
+        foreach ($this->routes[$method] as $nameOrId => $route) {
+            if (preg_match('#^' . $route['pattern'] . '$#', $pathWithoutQuery, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
-
-                return $callback(...$params);
+                return $route['callback'](...$params);
             }
         }
 
+        return $this->showNotFound();
+    }
+
+    private function showNotFound(): string
+    {
         return '404 Not Found';
     }
+
 }
