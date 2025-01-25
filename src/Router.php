@@ -45,9 +45,7 @@ class Router
                 }
             }
         }
-        if (! $pattern) {
-            $pattern = '/';
-        }
+        $pattern ??= '/';
 
         $this->routes[$method][] = new Route($callback, $pattern, $this->groupMiddlewaresStack);
 
@@ -103,9 +101,11 @@ class Router
         $this->prefix = $tmpPrefix;
     }
 
-    public function addGlobalMiddleware(Closure $middleware): void
+    public function addGlobalMiddleware(Closure $middleware): self
     {
         $this->globalMiddlewares[] = $middleware;
+
+        return $this;
     }
 
     public function dispatch(string $method, string $path): string
@@ -125,11 +125,13 @@ class Router
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
                 // Middleware chain
                 $callback = $route->callback;
-                foreach (array_reverse($route->middlewares) as $middleware) {
-                    $next = $callback;
-                    $callback = fn () => $middleware($next);
-                }
-                foreach (array_reverse($this->globalMiddlewares) as $middleware) {
+
+                $middlewareStack = array_merge(
+                    $this->globalMiddlewares,
+                    $route->middlewares
+                );
+
+                foreach (array_reverse($middlewareStack) as $middleware) {
                     $next = $callback;
                     $callback = fn () => $middleware($next);
                 }
@@ -142,7 +144,7 @@ class Router
         return $this->showNotFound();
     }
 
-    private function showNotFound(): string
+    protected function showNotFound(): string
     {
         return '404 Not Found';
     }
