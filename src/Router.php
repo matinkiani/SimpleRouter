@@ -7,13 +7,15 @@ namespace MatinKiani\SimpleRouter;
 class Router
 {
     /**
-     * @var array<string, array<string|int, array{callback: callable, pattern: string, middlewares: array<int,callable>}>> $routes
+     * @var array<string, array<string|int, array{callback: callable, pattern: string, middlewares: array<int,callable>}>>
      */
     private array $routes = [];
-
-//    private array $globalMiddlewares = [];
     /**
-     * @var array<int, callable> $groupMiddlewaresStack
+     * @var array<int, callable>
+     */
+    private array $globalMiddlewares = [];
+    /**
+     * @var array<int, callable>
      */
     private array $groupMiddlewaresStack = [];
 
@@ -44,6 +46,7 @@ class Router
         }
 
         $this->routes[$method][] = ['callback' => $callback, 'pattern' => $pattern, 'middlewares' => $this->groupMiddlewaresStack];
+
         return $this;
     }
 
@@ -96,6 +99,10 @@ class Router
         $this->prefix = $tmpPrefix;
     }
 
+    public function addGlobalMiddleware(callable $middleware): void
+    {
+        $this->globalMiddlewares[] = $middleware;
+    }
     public function dispatch(string $method, string $path): string
     {
         if (!isset($this->routes[$method])) {
@@ -108,7 +115,6 @@ class Router
             $pathWithoutQuery = '/';
         }
 
-
         foreach ($this->routes[$method] as $nameOrId => $route) {
             if (preg_match('#^' . $route['pattern'] . '$#', $pathWithoutQuery, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
@@ -118,6 +124,11 @@ class Router
                     $next = $callback;
                     $callback = fn() => $middleware($next);
                 }
+                foreach (array_reverse($this->globalMiddlewares) as $middleware) {
+                    $next = $callback;
+                    $callback = fn() => $middleware($next);
+                }
+
                 // Execute the final callback or middleware chain
                 return $callback(...$params);
             }
@@ -130,5 +141,4 @@ class Router
     {
         return '404 Not Found';
     }
-
 }
