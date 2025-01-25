@@ -222,99 +222,43 @@ class RouterTest extends TestCase
 
     }
 
-//    public function test_route_group_prefix(): void
-//    {
-//        $router = new Router;
-//        $router->group('/admin', function (Router $router) {
-//            $router->get('/dashboard', fn (): string => 'Admin Dashboard');
-//            $router->get('/users', fn (): string => 'Admin Users');
-//        });
-//
-//        $response1 = $router->dispatch('GET', '/admin/dashboard');
-//        $response2 = $router->dispatch('GET', '/admin/users');
-//
-//        $this->assertEquals('Admin Dashboard', $response1);
-//        $this->assertEquals('Admin Users', $response2);
-//    }
+    public function test_add_simple_middleware_through_a_group(): void
+    {
+        $router = new Router;
+        $tmpMiddleware = function ($next): string {
+            return 'Middleware 1' . $next();
+        };
+        $router->group(['middleware' => [$tmpMiddleware]], function () use ($router) {
+            $router->add('GET', '/test', fn(): string => 'Test Route');
+        });
 
-//    public function test_nested_route_groups(): void
-//    {
-//        $router = new Router;
-//        $router->group('/admin', function (Router $router) {
-//            $router->group('/users', function (Router $router) {
-//                $router->get('/list', fn (): string => 'Users List');
-//            });
-//        });
-//
-//        $response = $router->dispatch('GET', '/admin/users/list');
-//        $this->assertEquals('Users List', $response);
-//    }
-//
-//    public function test_middleware_execution(): void
-//    {
-//        $router = new Router;
-//        $router->addMiddleware(fn ($response) => strtoupper($response));
-//        $router->addMiddleware(fn ($response) => $response.'!');
-//
-//        $router->get('/test', fn (): string => 'hello');
-//
-//        $response = $router->dispatch('GET', '/test');
-//        $this->assertEquals('HELLO!', $response);
-//    }
-//
-//    public function test_named_routes(): void
-//    {
-//        $router = new Router;
-//        $router->get('/user/{id}', fn ($id): string => "User $id")
-//            ->name('user.show');
-//
-//        $url = $router->generateUrl('user.show', ['id' => '123']);
-//        $this->assertEquals('/user/123', $url);
-//    }
-//
-//    public function test_named_routes_throws_exception_for_invalid_name(): void
-//    {
-//        $router = new Router;
-//        $this->expectException(\InvalidArgumentException::class);
-//        $router->generateUrl('invalid.route');
-//    }
-//
-//    public function test_named_routes_with_multiple_parameters(): void
-//    {
-//        $router = new Router;
-//        $router->get('/user/{id}/post/{post}', fn ($id, $post): string => "User $id, Post $post")
-//            ->name('user.post');
-//
-//        $url = $router->generateUrl('user.post', ['id' => '123', 'post' => '456']);
-//        $this->assertEquals('/user/123/post/456', $url);
-//    }
-//
-//    public function test_middleware_order(): void
-//    {
-//        $router = new Router;
-//        $router->addMiddleware(fn ($response) => $response.'1');
-//        $router->addMiddleware(fn ($response) => $response.'2');
-//        $router->addMiddleware(fn ($response) => $response.'3');
-//
-//        $router->get('/test', fn (): string => 'test');
-//
-//        $response = $router->dispatch('GET', '/test');
-//        $this->assertEquals('test123', $response);
-//    }
-//
-//    public function test_group_isolation(): void
-//    {
-//        $router = new Router;
-//        $router->group('/admin', function (Router $router) {
-//            $router->get('/dashboard', fn (): string => 'Admin Dashboard');
-//        });
-//
-//        $router->get('/dashboard', fn (): string => 'Public Dashboard');
-//
-//        $response1 = $router->dispatch('GET', '/admin/dashboard');
-//        $response2 = $router->dispatch('GET', '/dashboard');
-//
-//        $this->assertEquals('Admin Dashboard', $response1);
-//        $this->assertEquals('Public Dashboard', $response2);
-//    }
+        $response = $router->dispatch('GET', '/test');
+
+        $this->assertEquals('Middleware 1Test Route', $response);
+    }
+    public function test_add_simple_middleware_through_a_group_without_an_array(): void
+    {
+        $router = new Router;
+        $tmpMiddleware = function ($next): string {
+            return 'Middleware 1' . $next();
+        };
+        $router->group(['middleware' => $tmpMiddleware], function () use ($router) {
+            $router->add('GET', '/test', fn(): string => 'Test Route');
+        });
+
+        $response = $router->dispatch('GET', '/test');
+
+        $this->assertEquals('Middleware 1Test Route', $response);
+    }
+    public function test_add_prefix_through_a_group(): void
+    {
+        $router = new Router;
+        $router->group(['prefix' => '/test'], function () use ($router) {
+            $router->add('GET', '/sub', fn(): string => 'Test Route');
+        });
+
+        $response = $router->dispatch('GET', '/test/sub');
+        $this->assertEquals('Test Route', $response);
+
+    }
 }

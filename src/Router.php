@@ -7,9 +7,17 @@ namespace MatinKiani\SimpleRouter;
 class Router
 {
     /**
-     * @var array<string, array<string|int, array{callback: callable, pattern: string}>> $routes
+     * @var array<string, array<string|int, array{callback: callable, pattern: string, middlewares: array<int,callable>}>> $routes
      */
     private array $routes = [];
+
+//    private array $globalMiddlewares = [];
+    /**
+     * @var array<int, callable> $groupMiddlewaresStack
+     */
+    private array $groupMiddlewaresStack = [];
+
+    private string $prefix = '';
 
     public function add(string $method, string $path, callable $callback): self
     {
@@ -19,6 +27,9 @@ class Router
             throw new \InvalidArgumentException('Invalid method');
         }
         $path = rtrim($path, '/');
+        if ($this->prefix) {
+            $path = $this->prefix . $path;
+        }
         $pattern = preg_replace('/\{(\w+)}/', '(?P<\1>[^/]+)', $path);
 
         if (isset($this->routes[$method])) {
@@ -32,7 +43,7 @@ class Router
             $pattern = '/';
         }
 
-        $this->routes[$method][] = ['callback' => $callback, 'pattern' => $pattern];
+        $this->routes[$method][] = ['callback' => $callback, 'pattern' => $pattern, 'middlewares' => $this->groupMiddlewaresStack];
         return $this;
     }
 
@@ -61,6 +72,29 @@ class Router
         return $this->add('DELETE', $path, $callback);
     }
 
+    /**
+     * @param array{prefix?:string , middleware?:array<callable>|callable} $attributes
+     */
+    public function group(array $attributes, callable $callback): void
+    {
+        $tmpMiddlewares = $this->groupMiddlewaresStack;
+        $tmpPrefix = $this->prefix;
+
+        if (isset($attributes['middleware'])) {
+            if (!is_array($attributes['middleware'])) {
+                $attributes['middleware'] = [$attributes['middleware']];
+            }
+            $this->groupMiddlewaresStack = array_merge($this->groupMiddlewaresStack, $attributes['middleware']);
+        }
+        if (isset($attributes['prefix'])) {
+            $this->prefix .= $attributes['prefix'];
+        }
+
+        $callback();
+
+        $this->groupMiddlewaresStack = $tmpMiddlewares;
+        $this->prefix = $tmpPrefix;
+    }
 
     public function dispatch(string $method, string $path): string
     {
@@ -78,7 +112,14 @@ class Router
         foreach ($this->routes[$method] as $nameOrId => $route) {
             if (preg_match('#^' . $route['pattern'] . '$#', $pathWithoutQuery, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
-                return $route['callback'](...$params);
+                // Middleware chain
+                $callback = $route['callback'];
+                foreach (array_reverse($route['middlewares']) as $middleware) {
+                    $next = $callback;
+                    $callback = fn() => $middleware($next);
+                }
+                // Execute the final callback or middleware chain
+                return $callback(...$params);
             }
         }
 
