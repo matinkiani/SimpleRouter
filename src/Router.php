@@ -25,7 +25,7 @@ class Router
 
     private string $prefix = '';
 
-    public function add(string $method, string $path, Closure $callback): self
+    public function add(string $method, string $path, Closure $callback): Route
     {
         $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
         $method = strtoupper($method);
@@ -45,34 +45,37 @@ class Router
                 }
             }
         }
-        $pattern ??= '/';
+        if (! $pattern) {
+            $pattern = '/';
+        }
 
-        $this->routes[$method][] = new Route($callback, $pattern, $this->groupMiddlewaresStack);
+        $route = new Route($callback, $pattern, $this->groupMiddlewaresStack);
+        $this->routes[$method][] = $route;
 
-        return $this;
+        return $route;
     }
 
-    public function get(string $path, Closure $callback): self
+    public function get(string $path, Closure $callback): Route
     {
         return $this->add('GET', $path, $callback);
     }
 
-    public function post(string $path, Closure $callback): self
+    public function post(string $path, Closure $callback): Route
     {
         return $this->add('POST', $path, $callback);
     }
 
-    public function put(string $path, Closure $callback): self
+    public function put(string $path, Closure $callback): Route
     {
         return $this->add('PUT', $path, $callback);
     }
 
-    public function patch(string $path, Closure $callback): self
+    public function patch(string $path, Closure $callback): Route
     {
         return $this->add('PATCH', $path, $callback);
     }
 
-    public function delete(string $path, Closure $callback): self
+    public function delete(string $path, Closure $callback): Route
     {
         return $this->add('DELETE', $path, $callback);
     }
@@ -123,25 +126,47 @@ class Router
         foreach ($this->routes[$method] as $nameOrId => $route) {
             if (preg_match('#^'.$route->pattern.'$#', $pathWithoutQuery, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+
                 // Middleware chain
-                $callback = $route->callback;
-
-                $middlewareStack = array_merge(
-                    $this->globalMiddlewares,
-                    $route->middlewares
-                );
-
-                foreach (array_reverse($middlewareStack) as $middleware) {
-                    $next = $callback;
-                    $callback = fn () => $middleware($next);
-                }
-
-                // Execute the final callback or middleware chain
-                return $callback(...$params);
+                return $this->wrapCallbackWithMiddlewares($route, $params);
             }
         }
 
         return $this->showNotFound();
+    }
+
+    public function route(string $name): string
+    {
+        foreach ($this->routes as $routes) {
+            foreach ($routes as $route) {
+                if ($route->name === $name) {
+                    return $this->wrapCallbackWithMiddlewares($route, []);
+                }
+            }
+        }
+
+        throw new \InvalidArgumentException('Route not found');
+    }
+
+    /**
+     * @param  array<string,mixed>  $params
+     */
+    public function wrapCallbackWithMiddlewares(Route $route, array $params): string
+    {
+        $callback = $route->callback;
+
+        $middlewareStack = array_merge(
+            $this->globalMiddlewares,
+            $route->middlewares
+        );
+
+        foreach (array_reverse($middlewareStack) as $middleware) {
+            $next = $callback;
+            $callback = fn () => $middleware($next);
+        }
+
+        // Execute the final callback or middleware chain
+        return $callback(...$params);
     }
 
     protected function showNotFound(): string

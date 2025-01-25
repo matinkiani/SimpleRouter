@@ -276,4 +276,88 @@ class RouterTest extends TestCase
         $this->assertEquals('Test Route', $response);
 
     }
+
+    public function test_route_can_be_named(): void
+    {
+        $route = $this->router->get('/users', fn () => 'Users List')
+            ->name('users.index');
+
+        $this->assertEquals('users.index', $route->name);
+    }
+
+    public function test_can_find_route_by_name(): void
+    {
+        $this->router->get('/users', fn () => 'Users List')
+            ->name('users.index');
+
+        $response = $this->router->route('users.index');
+        $this->assertEquals('Users List', $response);
+    }
+
+    public function test_route_not_found_by_name_throws_exception(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Route not found');
+
+        $this->router->route('non.existent.route');
+    }
+
+    public function test_multiple_named_routes(): void
+    {
+        $this->router->get('/users', fn () => 'Users List')
+            ->name('users.index');
+
+        $this->router->get('/users/create', fn () => 'Create User')
+            ->name('users.create');
+
+        $this->assertEquals('Users List', $this->router->route('users.index'));
+        $this->assertEquals('Create User', $this->router->route('users.create'));
+    }
+
+    public function test_named_route_with_middleware(): void
+    {
+        $middleware = fn ($next) => 'Before '.$next().' After';
+
+        $this->router->get('/users', fn () => 'Users List')
+            ->name('users.index');
+
+        $this->router->addGlobalMiddleware($middleware);
+
+        $response = $this->router->route('users.index');
+        $this->assertEquals('Before Users List After', $response);
+    }
+
+    public function test_named_route_in_group(): void
+    {
+        $this->router->group(['prefix' => '/admin'], function () {
+            $this->router->get('/users', fn () => 'Admin Users')
+                ->name('admin.users');
+        });
+
+        $response = $this->router->route('admin.users');
+        $this->assertEquals('Admin Users', $response);
+    }
+
+    //    public function test_named_route_with_parameters(): void TODO params for named routes
+    //    {
+    //        $this->router->get('/users/{id}', fn ($id) => "User {$id}")
+    //            ->name('users.show');
+    //
+    //        $response = $this->router->dispatch('GET', '/users/123');
+    //        $this->assertEquals('User 123', $response);
+    //
+    //        $namedResponse = $this->router->route('users.show');
+    //        $this->assertEquals('User ', $namedResponse); // No parameters provided
+    //    }
+
+    public function test_different_methods_with_same_named_routes(): void
+    {
+        $this->router->get('/users', fn () => 'Get Users')
+            ->name('users');
+
+        $this->router->post('/users', fn () => 'Create User')
+            ->name('users');
+
+        $this->assertEquals('Get Users', $this->router->route('users'));
+    }
 }
