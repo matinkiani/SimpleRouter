@@ -4,26 +4,28 @@ declare(strict_types=1);
 
 namespace MatinKiani\SimpleRouter;
 
+use Closure;
+
 class Router
 {
     /**
-     * @var array<string, array<string|int, array{callback: callable, pattern: string, middlewares: array<int,callable>}>>
+     * @var array<string, array<int, Route>>
      */
     private array $routes = [];
 
     /**
-     * @var array<int, callable>
+     * @var array<int, Closure>
      */
     private array $globalMiddlewares = [];
 
     /**
-     * @var array<int, callable>
+     * @var array<int, Closure>
      */
     private array $groupMiddlewaresStack = [];
 
     private string $prefix = '';
 
-    public function add(string $method, string $path, callable $callback): self
+    public function add(string $method, string $path, Closure $callback): self
     {
         $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
         $method = strtoupper($method);
@@ -38,7 +40,7 @@ class Router
 
         if (isset($this->routes[$method])) {
             foreach ($this->routes[$method] as $route) {
-                if ($route['pattern'] === $pattern) {
+                if ($route->pattern === $pattern) {
                     throw new \InvalidArgumentException('Pattern already exists');
                 }
             }
@@ -47,40 +49,40 @@ class Router
             $pattern = '/';
         }
 
-        $this->routes[$method][] = ['callback' => $callback, 'pattern' => $pattern, 'middlewares' => $this->groupMiddlewaresStack];
+        $this->routes[$method][] = new Route($callback, $pattern, $this->groupMiddlewaresStack);
 
         return $this;
     }
 
-    public function get(string $path, callable $callback): self
+    public function get(string $path, Closure $callback): self
     {
         return $this->add('GET', $path, $callback);
     }
 
-    public function post(string $path, callable $callback): self
+    public function post(string $path, Closure $callback): self
     {
         return $this->add('POST', $path, $callback);
     }
 
-    public function put(string $path, callable $callback): self
+    public function put(string $path, Closure $callback): self
     {
         return $this->add('PUT', $path, $callback);
     }
 
-    public function patch(string $path, callable $callback): self
+    public function patch(string $path, Closure $callback): self
     {
         return $this->add('PATCH', $path, $callback);
     }
 
-    public function delete(string $path, callable $callback): self
+    public function delete(string $path, Closure $callback): self
     {
         return $this->add('DELETE', $path, $callback);
     }
 
     /**
-     * @param  array{prefix?:string , middleware?:array<callable>|callable}  $attributes
+     * @param  array{prefix?:string , middleware?:array<Closure>|Closure}  $attributes
      */
-    public function group(array $attributes, callable $callback): void
+    public function group(array $attributes, Closure $callback): void
     {
         $tmpMiddlewares = $this->groupMiddlewaresStack;
         $tmpPrefix = $this->prefix;
@@ -101,7 +103,7 @@ class Router
         $this->prefix = $tmpPrefix;
     }
 
-    public function addGlobalMiddleware(callable $middleware): void
+    public function addGlobalMiddleware(Closure $middleware): void
     {
         $this->globalMiddlewares[] = $middleware;
     }
@@ -119,11 +121,11 @@ class Router
         }
 
         foreach ($this->routes[$method] as $nameOrId => $route) {
-            if (preg_match('#^'.$route['pattern'].'$#', $pathWithoutQuery, $matches)) {
+            if (preg_match('#^'.$route->pattern.'$#', $pathWithoutQuery, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
                 // Middleware chain
-                $callback = $route['callback'];
-                foreach (array_reverse($route['middlewares']) as $middleware) {
+                $callback = $route->callback;
+                foreach (array_reverse($route->middlewares) as $middleware) {
                     $next = $callback;
                     $callback = fn () => $middleware($next);
                 }
