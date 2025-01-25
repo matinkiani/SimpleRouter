@@ -10,10 +10,12 @@ class Router
      * @var array<string, array<string|int, array{callback: callable, pattern: string, middlewares: array<int,callable>}>>
      */
     private array $routes = [];
+
     /**
      * @var array<int, callable>
      */
     private array $globalMiddlewares = [];
+
     /**
      * @var array<int, callable>
      */
@@ -25,12 +27,12 @@ class Router
     {
         $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
         $method = strtoupper($method);
-        if (!in_array($method, $allowedMethods)) {
+        if (! in_array($method, $allowedMethods)) {
             throw new \InvalidArgumentException('Invalid method');
         }
         $path = rtrim($path, '/');
         if ($this->prefix) {
-            $path = $this->prefix . $path;
+            $path = $this->prefix.$path;
         }
         $pattern = preg_replace('/\{(\w+)}/', '(?P<\1>[^/]+)', $path);
 
@@ -41,7 +43,7 @@ class Router
                 }
             }
         }
-        if (!$pattern) {
+        if (! $pattern) {
             $pattern = '/';
         }
 
@@ -76,7 +78,7 @@ class Router
     }
 
     /**
-     * @param array{prefix?:string , middleware?:array<callable>|callable} $attributes
+     * @param  array{prefix?:string , middleware?:array<callable>|callable}  $attributes
      */
     public function group(array $attributes, callable $callback): void
     {
@@ -84,7 +86,7 @@ class Router
         $tmpPrefix = $this->prefix;
 
         if (isset($attributes['middleware'])) {
-            if (!is_array($attributes['middleware'])) {
+            if (! is_array($attributes['middleware'])) {
                 $attributes['middleware'] = [$attributes['middleware']];
             }
             $this->groupMiddlewaresStack = array_merge($this->groupMiddlewaresStack, $attributes['middleware']);
@@ -103,9 +105,10 @@ class Router
     {
         $this->globalMiddlewares[] = $middleware;
     }
+
     public function dispatch(string $method, string $path): string
     {
-        if (!isset($this->routes[$method])) {
+        if (! isset($this->routes[$method])) {
             return $this->showNotFound();
         }
 
@@ -116,17 +119,17 @@ class Router
         }
 
         foreach ($this->routes[$method] as $nameOrId => $route) {
-            if (preg_match('#^' . $route['pattern'] . '$#', $pathWithoutQuery, $matches)) {
+            if (preg_match('#^'.$route['pattern'].'$#', $pathWithoutQuery, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
                 // Middleware chain
                 $callback = $route['callback'];
                 foreach (array_reverse($route['middlewares']) as $middleware) {
                     $next = $callback;
-                    $callback = fn() => $middleware($next);
+                    $callback = fn () => $middleware($next);
                 }
                 foreach (array_reverse($this->globalMiddlewares) as $middleware) {
                     $next = $callback;
-                    $callback = fn() => $middleware($next);
+                    $callback = fn () => $middleware($next);
                 }
 
                 // Execute the final callback or middleware chain
