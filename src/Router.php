@@ -9,6 +9,12 @@ use Closure;
 class Router
 {
     /**
+     * @var array<string> $ALLOWED_METHODS
+     */
+    private const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
+
+    /**
      * @var array<string, array<int, Route>>
      */
     private array $routes = [];
@@ -27,14 +33,13 @@ class Router
 
     public function add(string $method, string $path, Closure $callback): Route
     {
-        $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
         $method = strtoupper($method);
-        if (! in_array($method, $allowedMethods)) {
+        if (!in_array($method, self::ALLOWED_METHODS)) {
             throw new \InvalidArgumentException('Invalid method');
         }
         $path = rtrim($path, '/');
         if ($this->prefix) {
-            $path = $this->prefix.$path;
+            $path = $this->prefix . $path;
         }
         $pattern = preg_replace('/\{(\w+)}/', '(?P<\1>[^/]+)', $path);
 
@@ -45,7 +50,7 @@ class Router
                 }
             }
         }
-        if (! $pattern) {
+        if (!$pattern) {
             $pattern = '/';
         }
 
@@ -81,7 +86,7 @@ class Router
     }
 
     /**
-     * @param  array{prefix?:string , middleware?:array<Closure>|Closure}  $attributes
+     * @param array{prefix?:string , middleware?:array<Closure>|Closure} $attributes
      */
     public function group(array $attributes, Closure $callback): void
     {
@@ -89,7 +94,7 @@ class Router
         $tmpPrefix = $this->prefix;
 
         if (isset($attributes['middleware'])) {
-            if (! is_array($attributes['middleware'])) {
+            if (!is_array($attributes['middleware'])) {
                 $attributes['middleware'] = [$attributes['middleware']];
             }
             $this->groupMiddlewaresStack = array_merge($this->groupMiddlewaresStack, $attributes['middleware']);
@@ -113,7 +118,7 @@ class Router
 
     public function dispatch(string $method, string $path): string
     {
-        if (! isset($this->routes[$method])) {
+        if (!isset($this->routes[$method])) {
             return $this->showNotFound();
         }
 
@@ -124,7 +129,7 @@ class Router
         }
 
         foreach ($this->routes[$method] as $nameOrId => $route) {
-            if (preg_match('#^'.$route->pattern.'$#', $pathWithoutQuery, $matches)) {
+            if (preg_match('#^' . $route->pattern . '$#', $pathWithoutQuery, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
 
                 // Middleware chain
@@ -149,7 +154,7 @@ class Router
     }
 
     /**
-     * @param  array<string,mixed>  $params
+     * @param array<string,mixed> $params
      */
     public function wrapCallbackWithMiddlewares(Route $route, array $params): string
     {
@@ -162,7 +167,7 @@ class Router
 
         foreach (array_reverse($middlewareStack) as $middleware) {
             $next = $callback;
-            $callback = fn () => $middleware($next);
+            $callback = fn() => $middleware($next);
         }
 
         // Execute the final callback or middleware chain
